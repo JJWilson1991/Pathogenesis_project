@@ -1,0 +1,43 @@
+---
+title: "Untitled"
+author: "JJW"
+date: "2022-09-08"
+output: html_document
+---
+
+
+```{r}
+# setwd the working directory 
+
+#install.packages("BiocManager")
+#BiocManager::install("EBImage")
+#install.packages("tcltk")
+#install.packages("metagear")
+library(metagear)
+library(tcltk)
+library(EBImage)
+
+#Distributing	the	abstracts	to different reviewers
+datapred<-read.csv("Chapter1_Screen2_09_08_2022.csv")
+Team<-c("Jonny")
+
+#Initialization of the reference dataset
+Refs<-effort_initialize(datapred)
+
+# Distribute screening effort to a team and produce files like "effort_Xinyi.csv"
+Refs_unscreened<-effort_distribute(Refs, reviewers=Team, effort = c(100), save_split = TRUE)
+
+Refs_unscreened[c("STUDY_ID", "REVIEWERS")]
+
+# initialize screener GUI, calling	the	abstract	screener for	one	reviewer
+#metagear::abstract_screener("effort_Xinyi.csv", aReviewer = "Xinyi", titleColumnName = "Title")
+metagear::abstract_screener("effort_Jonny1.csv", aReviewer = "Jonny", titleColumnName = "Title", abstractColumnName = "Abstract")
+#metagear::abstract_screener("effort_Nicole.csv", aReviewer = "Nicole", titleColumnName = "Title")
+
+# merge the effort_Xinyi.csv, effort_Jonny.csv and effort_Nicole.csv
+# WARNING: will merge all files named "effort_*" in directory
+### theRefs_screened <- effort_merge()
+### theRefs_screened[c("STUDY_ID", "REVIEWERS", "INCLUDE")]
+
+
+```

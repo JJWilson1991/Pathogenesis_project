@@ -1,0 +1,608 @@
+---
+title: "Untitled"
+author: "JJW"
+date: "2022-10-05"
+output: html_document
+---
+
+```{r}
+#load packages
+library(tidyverse)
+library(here)
+library(magrittr)
+library(visdat)
+library(DataExplorer)
+library(FactoMineR)
+library(factoextra)
+library(corrplot)
+```
+
+
+```{r}
+#load data from literature screen
+
+full_data<-read_csv(here("data", "raw_data", "full_data_filtered.csv"))
+
+
+
+
+```
+
+```{r}
+#index dataframe to filter out extraneous variables, references etc
+
+full_data_filter1<-full_data[,c(18:50)]
+
+#check for initial missing data
+vis_miss(full_data_filter1)
+
+#index again
+
+full_data_filter2<-full_data_filter1[,c(1:7,13:16,21:22)]
+
+
+vis_miss(full_data_filter2)
+```
+
+
+```{r}
+
+#add latin names and orders for host and spillover species
+
+#add orders so can order network
+all_hosts<-read.csv(here::here("data", "raw_data", "All_hosts.csv"))
+
+all_hosts_H<-all_hosts[,(c(1:6))]
+
+```
+```{r}
+colnames(all_hosts_H)[1]<-"Host Species"
+```
+```{r}
+full_data_filter2$`Host Species`<-str_to_title(full_data_filter2$`Host Species`)
+full_data_filter2$`Spillover Species`<-str_to_title(full_data_filter2$`Spillover Species`)
+full_data_filter2$Order<-str_to_title(full_data_filter2$Order)
+full_data_filter2$Zoonotic<-str_to_title(full_data_filter2$Zoonotic)
+full_data_filter2$Virus_Name<-str_to_title(full_data_filter2$Virus_Name)
+#trial1<-left_join(all_data,all_hosts_H)
+
+#replace and with comma
+
+full_data_filter2$`Host Species`%<>%str_replace(("(?i) and "),", ")
+```
+
+
+```{r}
+#make column of adjusted virus names with just influenza a and rota virus a
+full_data_filter2%<>%mutate(Virus_name_2=Virus_Name)
+
+full_data_filter2$Virus_name_2[grep("Influenza A",full_data_filter2$Virus_name_2)]<- "Influenza A" 
+
+full_data_filter2$Virus_name_2[grep("Rotavirus",full_data_filter2$Virus_name_2)]<- "Rotavirus A" 
+
+full_data_filter2<-full_data_filter2[,c(1,14,2:13)]
+```
+all_data%<>%row_to_names(row_number = 1)
+
+#species_data<-all_data[,c(8,9)]
+
+
+
+#colnames(species_data)[1]<-"Host_species"
+#colnames(species_data)[2]<-"Spillover_species"
+```{r}
+all_hosts_H$`Host Species`%<>%as.character()
+#species_data$Spillover_species%<>%as.character()
+```
+
+```{r}
+#split multiple common names into indeivudal rows
+ all_hosts_H %<>%
+       mutate(`Host Species` = strsplit(as.character(`Host Species`), ", ")) %>%
+       unnest(`Host Species`)
+all_hosts_S<-all_hosts_H
+colnames(all_hosts_S)[1]<-"Spillover Species"
+colnames(all_hosts_S)[2]<-"sHostNameFinal"
+colnames(all_hosts_S)[3]<-"sOrder"
+colnames(all_hosts_S)[4]<-"sFamily"
+colnames(all_hosts_S)[5]<-"sGenus"
+colnames(all_hosts_S)[6]<-"sSpecies"
+```
+
+```{r}
+#unnest multiple host and spillover species into individual entries
+full_data_filter2%<>%
+  mutate(`Host Species`=strsplit(as.character(`Host Species`), ", ")) %>%
+       unnest(`Host Species`)
+
+full_data_filter2%<>%
+  mutate(`Spillover Species`=strsplit(as.character(`Spillover Species`), ", ")) %>%
+       unnest(`Spillover Species`)
+```
+
+```{r}
+#wrangl host species names
+full_data_filter2$`Host Species`[grep("oar", full_data_filter2$`Host Species`)] <- "Wild Boar" 
+full_data_filter2$`Host Species`[grep("attle", full_data_filter2$`Host Species`)] <- "Cattle" 
+full_data_filter2$`Host Species`[grep("ig", full_data_filter2$`Host Species`)] <- "Pigs" 
+full_data_filter2$`Host Species`[grep("swine", full_data_filter2$`Host Species`)] <- "Pigs" 
+full_data_filter2$`Host Species`[grep("African", full_data_filter2$`Host Species`)] <- "African Buffalo" 
+full_data_filter2$`Host Species`[grep("ison", full_data_filter2$`Host Species`)] <- "American Bison" 
+full_data_filter2$`Host Species`[grep("red deer", full_data_filter2$`Host Species`)] <- "Red Deer" 
+full_data_filter2$`Host Species`[grep("eep", full_data_filter2$`Host Species`)] <- "Sheep" 
+full_data_filter2$`Host Species`[grep("ampire", full_data_filter2$`Host Species`)] <- "Vampire Bat" 
+full_data_filter2$`Host Species`[grep("abbit", full_data_filter2$`Host Species`)] <- "European Rabbit" 
+full_data_filter2$`Host Species`[grep("armoset", full_data_filter2$`Host Species`)] <- "Common Marmoset"
+full_data_filter2$`Host Species`[grep("accoon", full_data_filter2$`Host Species`)] <- "Northern Raccoon"
+full_data_filter2$`Host Species`[grep("Civet", full_data_filter2$`Host Species`)] <- "Masked Palm Civet"
+full_data_filter2$`Host Species`[grep("De Brazza's", full_data_filter2$`Host Species`)] <- "De Brazza's Monkey"
+full_data_filter2$`Host Species`[grep("Sootey", full_data_filter2$`Host Species`)] <- "Sooty Mangabey"
+full_data_filter2$`Host Species`[grep("Hamster", full_data_filter2$`Host Species`)] <- "Common Hamster" 
+full_data_filter2$`Host Species`[grep("Dogs", full_data_filter2$`Host Species`)] <- "Domestic Dog" 
+full_data_filter2$`Host Species`[grep("Gorilla", full_data_filter2$`Host Species`)] <- "Lowland Gorilla" 
+full_data_filter2$`Host Species`[grep("quireel", full_data_filter2$`Host Species`)] <- "Variegated Squirrel" 
+full_data_filter2$`Host Species`[grep("Red-Tailed", full_data_filter2$`Host Species`)] <- "Red-tailed Monkey" 
+full_data_filter2$`Host Species`[grep("White-Toothed", full_data_filter2$`Host Species`)] <- "White-toothed Shrew" 
+full_data_filter2$`Host Species`[grep("Crab-Eating", full_data_filter2$`Host Species`)] <- "Crab-eating Fox" 
+```
+
+
+```{r}
+full_data_filter2%<>%
+  mutate(hHostNameFinal2 = case_when(
+    `Host Species`== "Goat" ~ "Capra_hircus", 
+    `Host Species`== "Pigs" ~ "Sus_scrofa", 
+   `Host Species`=="Cattle"~"Bos_taurus",
+   `Host Species`=="Bovine"~"Bos_taurus",
+   `Host Species`=="Dromedary Camel"~"Camelus_dromedarius",
+   `Host Species`=="Sheep"~"Ovis_aries",
+   `Host Species`=="Domestic Dog"~"Canis_familiaris",
+   `Host Species`=="Domestic Cat"~"Felis_catus",
+   `Host Species`=="Rat"~"Rattus_norvegicus",
+   `Host Species`=="Poultry"~"Gallus_gallus",
+   `Host Species`=="Chicken"~"Gallus_gallus",
+   `Host Species`=="Turkey"~"Meleagris_gallopavo",
+   `Host Species`=="Horse"~"Equus_caballus"))
+
+
+```
+
+```{r}
+#repeat on spillover species
+full_data_filter2$`Spillover Species`[grep("oar", full_data_filter2$`Spillover Species`)] <- "Wild Boar" 
+full_data_filter2$`Spillover Species`[grep("attle", full_data_filter2$`Spillover Species`)] <- "Cattle" 
+full_data_filter2$`Spillover Species`[grep("ig", full_data_filter2$`Spillover Species`)] <- "Pigs" 
+full_data_filter2$`Spillover Species`[grep("swine", full_data_filter2$`Spillover Species`)] <- "Pigs" 
+full_data_filter2$`Spillover Species`[grep("African", full_data_filter2$`Spillover Species`)] <- "African Buffalo" 
+full_data_filter2$`Spillover Species`[grep("ison", full_data_filter2$`Spillover Species`)] <- "American Bison" 
+full_data_filter2$`Spillover Species`[grep("red deer", full_data_filter2$`Spillover Species`)] <- "Red Deer" 
+full_data_filter2$`Spillover Species`[grep("eep", full_data_filter2$`Spillover Species`)] <- "Sheep" 
+full_data_filter2$`Spillover Species`[grep("ampire", full_data_filter2$`Spillover Species`)] <- "Vampire Bat" 
+full_data_filter2$`Spillover Species`[grep("abbit", full_data_filter2$`Spillover Species`)] <- "European Rabbit" 
+full_data_filter2$`Spillover Species`[grep("armoset", full_data_filter2$`Spillover Species`)] <- "Common Marmoset"
+full_data_filter2$`Spillover Species`[grep("accoon", full_data_filter2$`Spillover Species`)] <- "Northern Raccoon"
+full_data_filter2$`Spillover Species`[grep("Civet", full_data_filter2$`Spillover Species`)] <- "Masked Palm Civet"
+full_data_filter2$`Spillover Species`[grep("De Brazza's", full_data_filter2$`Spillover Species`)] <- "De Brazza's Monkey"
+full_data_filter2$`Spillover Species`[grep("Sootey", full_data_filter2$`Spillover Species`)] <- "Sooty Mangabey"
+full_data_filter2$`Spillover Species`[grep("Hamster", full_data_filter2$`Spillover Species`)] <- "Common Hamster" 
+full_data_filter2$`Spillover Species`[grep("Dogs", full_data_filter2$`Spillover Species`)] <- "Domestic Dog" 
+full_data_filter2$`Spillover Species`[grep("Gorilla", full_data_filter2$`Spillover Species`)] <- "Lowland Gorilla" 
+full_data_filter2$`Spillover Species`[grep("quireel", full_data_filter2$`Spillover Species`)] <- "Variegated Squirrel" 
+full_data_filter2$`Spillover Species`[grep("Red-Tailed", full_data_filter2$`Spillover Species`)] <- "Red-tailed Monkey" 
+full_data_filter2$`Spillover Species`[grep("White-Toothed", full_data_filter2$`Spillover Species`)] <- "White-toothed Shrew" 
+full_data_filter2$`Spillover Species`[grep("Crab-Eating", full_data_filter2$`Spillover Species`)] <- "Crab-eating Fox" 
+full_data_filter2$`Spillover Species`[grep("Black-Backed", full_data_filter2$`Spillover Species`)] <- "Black-backed Jackal" 
+full_data_filter2$`Spillover Species`[grep("Spotted Deer", full_data_filter2$`Spillover Species`)] <- "Axis Deer" 
+full_data_filter2$`Spillover Species`[grep("Skunk", full_data_filter2$`Spillover Species`)] <- "Striped Skunk" 
+```
+
+```{r}
+full_data_filter2%<>%
+  mutate(sHostNameFinal2 = case_when(
+    `Spillover Species`== "Goat" ~ "Capra_hircus", 
+    `Spillover Species`== "Pigs" ~ "Sus_scrofa", 
+   `Spillover Species`=="Cattle"~"Bos_taurus",
+   `Spillover Species`=="Bovine"~"Bos_taurus",
+   `Spillover Species`=="Dromedary Camel"~"Camelus_dromedarius",
+   `Spillover Species`=="Sheep"~"Ovis_aries",
+   `Spillover Species`=="Domestic Dog"~"Canis_familiaris",
+   `Spillover Species`=="Domestic Cat"~"Felis_catus",
+   `Spillover Species`=="Rat"~"Rattus_norvegicus",
+   `Spillover Species`=="Poultry"~"Gallus_gallus",
+   `Spillover Species`=="Chicken"~"Gallus_gallus",
+   `Spillover Species`=="Turkey"~"Meleagris_gallopavo",
+   `Spillover Species`=="Horse"~"Equus_caballus",
+   `Spillover Species`=="Guinea Fowl"~"Numida_meleagris",
+   `Spillover Species`=="Giant Panda"~"Ailuropoda_melanoleuca",
+    `Spillover Species`=="Florida Panther"~"Puma_concolor",
+    `Spillover Species`=="Tshushima Cat"~"Prionailurus_bengalensis",
+    `Spillover Species`=="White-Eared Opossum"~"Didelphis_albiventris",
+   `Spillover Species`=="Northern Elephant Seal"~"Mirounga_angustirostris",
+   `Spillover Species`=="Ferret"~"Mustela_furo",
+   `Spillover Species`=="Donkey"~"Equus_asinus"))
+
+
+```
+```{r}
+
+initial_join1<-left_join(full_data_filter2,all_hosts_H[,c(1,2)])
+# #mergeinitial_join1<-
+#   merge(full_data_filter2,all_hosts_H, by=c("hHostNameFinal", "Host Species"))
+
+initial_join2<-left_join(initial_join1,all_hosts_S[,c(1,2)])
+
+
+#coalesce
+
+initial_join2%<>% mutate(hHostNameFinal = coalesce(hHostNameFinal,hHostNameFinal2))
+initial_join2%<>% mutate(sHostNameFinal = coalesce(sHostNameFinal,sHostNameFinal2))
+
+
+#make disntinct data frame of host latin names to avoid duplicates
+Distinct_hHost<-all_hosts_H%>%distinct(hHostNameFinal, .keep_all = T)
+
+Distinct_sHost<-all_hosts_S%>%distinct(sHostNameFinal, .keep_all = T)
+#join orders etc
+initial_join3<-left_join(initial_join2,Distinct_hHost[,c(2:4)], by="hHostNameFinal")
+
+initial_join4<-left_join(initial_join3,Distinct_sHost[,c(2:4)],by="sHostNameFinal")
+
+#index to remove extra name columns
+initial_join4<-initial_join4[,c(1:5,7,17,19,20,8,18,21,22,6,9:14)]
+```
+```{r}
+#use distinct to make a dataframe with only one entry for each virus
+
+Distinct_virusDF<-full_data_filter2%>%distinct(Virus_name_2, .keep_all = T)
+
+
+table(Distinct_virusDF$Order)
+
+```
+
+```{r}
+
+# initial_join2$`Host Species`%<>%as.factor()
+# #test2<-
+# full_data_filter2%<>%
+#   mutate(hHostNameFinal2 = case_when(
+#     `Host Species`== "Goat" ~ "Capra_hircus", 
+#     `Host Species`== "Pigs" ~ "Sus_scrofa", 
+#    `Host Species`=="Cattle"~"Bos_taurus",
+#    `Host Species`=="Bovine"~"Bos_taurus",
+#    `Host Species`=="Dromedary Camel"~"Camelus_dromedarius",
+#    `Host Species`=="Sheep"~"Ovis_aries",
+#    `Host Species`=="Domestic Dog"~"Canis_familiaris",
+#    `Host Species`=="Domestic Cat"~"Felis_catus",
+#    `Host Species`=="Rat"~"Rattus_norvegicus",
+#    `Host Species`=="Poultry"~"Gallus_gallus",
+#    `Host Species`=="Chicken"~"Gallus_gallus",
+#    `Host Species`=="Rabbit"~"Oryctolagus_cuniculus"))
+# 
+# test3<-merge(test2, all_hosts_H, by="hHostNameFinal")
+
+#test1<-initial_join2%>%dplyr::mutate(hHostNameFinal=if_else(`Host Species`=="Pigs","Sus_scrofa",""))%>%dplyr::mutate(hHostNameFinal=if_else(`Host Species`=="Goat","Capra_hircus",hHostNameFinal)
+                                                                                   
+```
+
+
+
+
+
+
+
+
+
+```{r}
+
+ #mutate cell tropism into individual binary columns of cell type
+data_wrangle1 <- initial_join4 %>%
+
+  mutate(CT_macrophages=if_else(grepl("(?i)macro|(?i)mono|(?i)dendr",Cell_Tropism),"macrophages","not_macrophages"))%>%
+  mutate(CT_respiratory_epithelium=if_else(grepl("(?i)resp|(?i)Bronchi",Cell_Tropism),"respiratory_epithelium","not_respiratory_epithelium"))%>%
+  mutate(CT_endothelium=if_else(grepl("(?i)endo",Cell_Tropism),"endothelium","not_endothelium"))%>%
+  mutate(CT_lymphocytes=if_else(grepl("(?i)lymph",Cell_Tropism),"lymphocytes","not_lymphocytes"))%>%
+  mutate(CT_hepatocytes=if_else(grepl("(?i)hepato",Cell_Tropism),"hepatocytes","not_hepatocytes"))%>%
+   mutate(CT_epithelial=if_else(grepl("(?i)Epithelial, lymphoid cells",Cell_Tropism),"epithelium","not_epithelium"))%>%
+ # mutate(CT_keratinocytes=if_else(grepl("(?i)kerat",Cell_Tropism),"keratinocytes","not_keratinocytes"))%>%
+  mutate(CT_intestinal_epithelium=if_else(grepl("(?i)intest",Cell_Tropism),"intestinal_epithelium","not_intestinal_epithelium"))%>%
+  mutate(CT_pantropic=if_else(grepl("(?i)Pantropic",Cell_Tropism),"pantropic","not_pantropic"))%>%
+ # mutate(CT_fibroblasts=if_else(grepl("(?i)fibro",Cell_Tropism),"fibroblasts","not_fibroblasts"))%>%
+  mutate(CT_neurons=if_else(grepl("(?i)neur",Cell_Tropism),"neurons","not_neurons"))#%>%
+ # mutate(CT_monocytes=if_else(grepl("(?i)mono",Cell_Tropism),"monocytes","not_monocytes"))%>%
+  #mutate(CT_dendrocytes=if_else(grepl("(?i)dendr",Cell_Tropism),"dendrocytes","not_dendrocytes"))#%>%
+ # mutate(CT_platelets=if_else(grepl("(?i)plat",Cell_Tropism),"platelets","not_platelets"))%>%
+#  mutate(CT_RBCs=if_else(grepl("(?i)red",Cell_Tropism),"RBCs","not_RBCs"))
+
+#put monocytes and dendrocytes with macrophages
+
+```
+```{r}
+#repeat for organs affected and spread mechanism
+data_wrangle2<-data_wrangle1%>%
+  mutate(OA_respiratory=if_else(grepl("(?i)lung|(?i)resp|(?i)trachea|(?i)bronch|(?i)pulmo",`Systems/organs affected`),"respiratory_system","not_respiratory_system"))%>%
+  mutate(OA_lymphoid=if_else(grepl("(?i)lymph|(?i)marrow|(?i)tonsil|(?i)spleen|(?i)immun",`Systems/organs affected`),"immune_system","not_immune_system"))%>%
+  mutate(OA_gastrointestinal=if_else(grepl("(?i)gasto|GI|(?i)stomach|(?i)intest",`Systems/organs affected`),"gastrointestinal_system","not_gastrointestinal_system"))%>%
+    mutate(OA_CNS=if_else(grepl("CNS|(?i)nerv|(?i)neur|(?i)ocular",`Systems/organs affected`),"nervous_system","not_nervous_system"))%>%
+    mutate(OA_pancreas=if_else(grepl("(?i)pancreas",`Systems/organs affected`),"pancreas","not_pancreas"))%>%
+  mutate(OA_renal=if_else(grepl("(?i)kidney",`Systems/organs affected`),"renal_system","not_renal_system"))%>%
+    mutate(OA_heart=if_else(grepl("(?i)heart",`Systems/organs affected`),"heart","not_heart"))%>%
+  mutate(OA_musculoskeletal=if_else(grepl("(?i)muscle|(?i)musculo",`Systems/organs affected`),"musculoskeletal_system","not_musculoskeletal_system"))%>%
+    mutate(OA_endothelium=if_else(grepl("(?i)blood vessel wall|(?i)vascular",`Systems/organs affected`),"endothelium","not_endothelium"))%>%
+    mutate(OA_integument=if_else(grepl("(?i)integument",`Systems/organs affected`),"integument","not_integument"))%>%
+    mutate(OA_reproductive=if_else(grepl("(?i)placenta|(?i)reproductive|(?i)gonad|(?i)fetus",`Systems/organs affected`),"reproductive_system","not_reproductive_system"))%>%
+   # mutate(OA_ocular=if_else(grepl("(?i)ocular",`Systems/organs affected`),"ocular","not_ocular"))%>%
+   # mutate(OA_fetus=if_else(grepl("(?i)fetus",`Systems/organs affected`),"fetus","not_fetus"))%>%
+  #mutate(OA_bone=if_else(grepl("(?i)bone",`Systems/organs affected`),"bone","not_bone"))%>%
+    mutate(OA_thyroid=if_else(grepl("(?i)thyroid",`Systems/organs affected`),"thyroid","not_thyroid"))%>%
+    mutate(OA_liver=if_else(grepl("(?i)liver",`Systems/organs affected`),"liver","not_liver"))
+```
+```{r}
+#spread mechanism
+data_wrangle3<-data_wrangle2%>%
+  mutate(SM_lymphatic=if_else(grepl("(?i)lymph|(?i)macro",Spread_Mechanism),"lymphatic","not_lymphatic"))%>%
+    mutate(SM_neuronal=if_else(grepl("(?i)synaptic|(?i)neuro",Spread_Mechanism),"neuronal","not_neuronal"))%>%
+    mutate(SM_epithelial=if_else(grepl("(?i)epith|(?i)kerat",Spread_Mechanism),"epithelial","not_epithelial"))%>%
+   # mutate(SM_endothelial=if_else(grepl("(?i)endo",Spread_Mechanism),"endothelial","not_endothelial"))%>%
+  mutate(SM_gastrointestinal=if_else(grepl("(?i)intest",Spread_Mechanism),"gastrointestinal","not_gastrointestinal"))%>%
+ mutate(SM_viremia=if_else(grepl("(?i)virem",Spread_Mechanism),"viremia","not_viremia"))
+```
+
+```{r}
+#cell receptor
+data_wrangle4<-data_wrangle3%>%
+  mutate(CR_integrins=if_else(grepl("(?i)integrin",Cell_Receptor),"integrins","not_integrins"))%>%
+  mutate(CR_HSPG=if_else(grepl("(?i)HSGP|HSPG|heparan",Cell_Receptor),"HSPG","not_HSPG"))
+```
+
+```{r}
+#exploratory data analysis
+
+
+create_report(data_wrangle4)
+
+plot_bar(data_wrangle4)
+```
+
+```{r}
+
+
+#make Df suitable for factominer
+
+view(data_wrangle4)
+
+facto_table1<-data_wrangle4[,c(3,14,21:49)]
+facto_table1<-data.frame(lapply(facto_table1,factor))
+
+
+summary(facto_table1)
+#we can make the order related supplemtnary and make pathology active
+res.mca = MCA(facto_table1,  quali.sup=c(1))
+
+plot(res.mca)
+
+
+plot.MCA(res.mca, invisible=c("var","quali.sup"), cex=0.7)
+plot.MCA(res.mca, invisible=c("ind","quali.sup"), cex=0.7)
+plot.MCA(res.mca, invisible=c("ind"))
+plot.MCA(res.mca, invisible=c("ind", "var"))
+
+#plot ellipses for zoontoic
+zoonotic_ellipse<-plotellipses(res.mca,keepvar = 2)
+
+ggsave(here::here("results", "zoonotic_ellipse.png"),plot = zoonotic_ellipse)
+
+fviz_mca_biplot(res.mca, 
+               repel = TRUE, # Avoid text overlapping (slow if many point)
+               ggtheme = theme_minimal())
+
+fviz_mca_var(res.mca, 
+             repel = TRUE, # Avoid text overlapping (slow)
+             ggtheme = theme_minimal())
+
+grp <- as.factor(facto_table1[, "Zoonotic"])
+zoonotic_ellipse_var<-fviz_mca_biplot(res.mca, repel = TRUE, col.var = "#E7B800",
+ habillage = grp, addEllipses = TRUE, ellipse.level = 0.95, invisible = "quali.sup")
+
+zoonotic_ellipse_var
+ggsave(here::here("results", "zoonotic_ellipse_var.png"),plot = zoonotic_ellipse_var)
+
+
+# Select the top 30 contributing individuals
+# And the top 10 variables
+fviz_mca_biplot(res.mca,
+               select.ind = list(contrib = 30),
+               select.var = list(contrib = 10))
+
+
+#variable correlation to dimension
+
+dimension_cor<-fviz_mca_var(res.mca, choice = "mca.cor",
+             repel = TRUE)
+
+ggsave(here::here("results", "dimension_cor.png"),plot = dimension_cor)
+
+#screeplot to explain % of variance explained by each dimension
+fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 45))
+
+# Change the color by groups, add ellipses
+#fviz_mca_biplot(res.mca, label="var", col.var ="red",
+ #  habillage=grp, addEllipses=TRUE, ellipse.level=0.95)
+
+
+dimdesc(res.mca)
+#eigen values for each dimension
+eigenvalues<-get_eigenvalue(res.mca)
+
+fgh<-res.mca$var
+
+
+var <- get_mca_var(res.mca)
+var
+
+# Coordinates
+head(var$coord)
+# Cos2: quality on the factore map
+head(var$cos2)
+# Contributions to the principal components
+head(var$contrib)
+
+
+corrplot(var$cos2, is.corr=FALSE)
+fviz_cos2(res.mca, choice = "var", axes = 1:2)
+
+
+# Contributions of rows to dimension 1
+fviz_contrib(res.mca, choice = "var", axes = 1, top = 15)
+# Contributions of rows to dimension 2
+fviz_contrib(res.mca, choice = "var", axes = 2, top = 15)
+```
+
+###repeating with distinc t viruses DF
+
+```{r}
+#repeat the above analysis with the distinct virus DF
+
+ #mutate cell tropism into individual binary columns of cell type
+DV1 <- Distinct_virusDF %>%
+
+  mutate(CT_macrophages=if_else(grepl("(?i)macro|(?i)mono|(?i)dendr",Cell_Tropism),"macrophages","not_macrophages"))%>%
+  mutate(CT_respiratory_epithelium=if_else(grepl("(?i)resp|(?i)Bronchi",Cell_Tropism),"respiratory_epithelium","not_respiratory_epithelium"))%>%
+  mutate(CT_endothelium=if_else(grepl("(?i)endo",Cell_Tropism),"endothelium","not_endothelium"))%>%
+  mutate(CT_lymphocytes=if_else(grepl("(?i)lymph",Cell_Tropism),"lymphocytes","not_lymphocytes"))%>%
+  mutate(CT_hepatocytes=if_else(grepl("(?i)hepato",Cell_Tropism),"hepatocytes","not_hepatocytes"))%>%
+   mutate(CT_epithelial=if_else(grepl("(?i)Epithelial, lymphoid cells",Cell_Tropism),"epithelium","not_epithelium"))%>%
+ # mutate(CT_keratinocytes=if_else(grepl("(?i)kerat",Cell_Tropism),"keratinocytes","not_keratinocytes"))%>%
+  mutate(CT_intestinal_epithelium=if_else(grepl("(?i)intest",Cell_Tropism),"intestinal_epithelium","not_intestinal_epithelium"))%>%
+  mutate(CT_pantropic=if_else(grepl("(?i)Pantropic",Cell_Tropism),"pantropic","not_pantropic"))%>%
+ # mutate(CT_fibroblasts=if_else(grepl("(?i)fibro",Cell_Tropism),"fibroblasts","not_fibroblasts"))%>%
+  mutate(CT_neurons=if_else(grepl("(?i)neur",Cell_Tropism),"neurons","not_neurons"))#%>%
+ # mutate(CT_monocytes=if_else(grepl("(?i)mono",Cell_Tropism),"monocytes","not_monocytes"))%>%
+  #mutate(CT_dendrocytes=if_else(grepl("(?i)dendr",Cell_Tropism),"dendrocytes","not_dendrocytes"))#%>%
+ # mutate(CT_platelets=if_else(grepl("(?i)plat",Cell_Tropism),"platelets","not_platelets"))%>%
+#  mutate(CT_RBCs=if_else(grepl("(?i)red",Cell_Tropism),"RBCs","not_RBCs"))
+
+#put monocytes and dendrocytes with macrophages
+
+```
+```{r}
+#repeat for organs affected and spread mechanism
+DV2<-DV1%>%
+  mutate(OA_respiratory=if_else(grepl("(?i)lung|(?i)resp|(?i)trachea|(?i)bronch|(?i)pulmo",`Systems/organs affected`),"respiratory_system","not_respiratory_system"))%>%
+  mutate(OA_lymphoid=if_else(grepl("(?i)lymph|(?i)marrow|(?i)tonsil|(?i)spleen|(?i)immun",`Systems/organs affected`),"immune_system","not_immune_system"))%>%
+  mutate(OA_gastrointestinal=if_else(grepl("(?i)gasto|GI|(?i)stomach|(?i)intest",`Systems/organs affected`),"gastrointestinal_system","not_gastrointestinal_system"))%>%
+    mutate(OA_CNS=if_else(grepl("CNS|(?i)nerv|(?i)neur|(?i)ocular",`Systems/organs affected`),"nervous_system","not_nervous_system"))%>%
+    mutate(OA_pancreas=if_else(grepl("(?i)pancreas",`Systems/organs affected`),"pancreas","not_pancreas"))%>%
+  mutate(OA_renal=if_else(grepl("(?i)kidney",`Systems/organs affected`),"renal_system","not_renal_system"))%>%
+    mutate(OA_heart=if_else(grepl("(?i)heart",`Systems/organs affected`),"heart","not_heart"))%>%
+  mutate(OA_musculoskeletal=if_else(grepl("(?i)muscle|(?i)musculo",`Systems/organs affected`),"musculoskeletal_system","not_musculoskeletal_system"))%>%
+    mutate(OA_endothelium=if_else(grepl("(?i)blood vessel wall|(?i)vascular",`Systems/organs affected`),"endothelium","not_endothelium"))%>%
+    mutate(OA_integument=if_else(grepl("(?i)integument",`Systems/organs affected`),"integument","not_integument"))%>%
+    mutate(OA_reproductive=if_else(grepl("(?i)placenta|(?i)reproductive|(?i)gonad|(?i)fetus",`Systems/organs affected`),"reproductive_system","not_reproductive_system"))%>%
+   # mutate(OA_ocular=if_else(grepl("(?i)ocular",`Systems/organs affected`),"ocular","not_ocular"))%>%
+   # mutate(OA_fetus=if_else(grepl("(?i)fetus",`Systems/organs affected`),"fetus","not_fetus"))%>%
+  #mutate(OA_bone=if_else(grepl("(?i)bone",`Systems/organs affected`),"bone","not_bone"))%>%
+    mutate(OA_thyroid=if_else(grepl("(?i)thyroid",`Systems/organs affected`),"thyroid","not_thyroid"))%>%
+    mutate(OA_liver=if_else(grepl("(?i)liver",`Systems/organs affected`),"liver","not_liver"))
+```
+```{r}
+#spread mechanism
+DV3<-DV2%>%
+  mutate(SM_lymphatic=if_else(grepl("(?i)lymph|(?i)macro",Spread_Mechanism),"lymphatic","not_lymphatic"))%>%
+    mutate(SM_neuronal=if_else(grepl("(?i)synaptic|(?i)neuro",Spread_Mechanism),"neuronal","not_neuronal"))%>%
+    mutate(SM_epithelial=if_else(grepl("(?i)epith|(?i)kerat",Spread_Mechanism),"epithelial","not_epithelial"))%>%
+   # mutate(SM_endothelial=if_else(grepl("(?i)endo",Spread_Mechanism),"endothelial","not_endothelial"))%>%
+  mutate(SM_gastrointestinal=if_else(grepl("(?i)intest",Spread_Mechanism),"gastrointestinal","not_gastrointestinal"))%>%
+ mutate(SM_viremia=if_else(grepl("(?i)virem",Spread_Mechanism),"viremia","not_viremia"))
+```
+
+```{r}
+#cell receptor
+DV4<-DV3%>%
+  mutate(CR_integrins=if_else(grepl("(?i)integrin",Cell_Receptor),"integrins","not_integrins"))%>%
+  mutate(CR_HSPG=if_else(grepl("(?i)HSGP|HSPG|heparan",Cell_Receptor),"HSPG","not_HSPG"))
+
+DV4<-DV4[,c(1:6,9:14,17:45 )]
+
+#make anthro into zoonotic. can't say if anto/zoo without species for direction
+DV4%<>%
+  mutate(Zoonotic = case_when(
+    Zoonotic== "Anthroponotic" ~ "Zoonotic",
+    Zoonotic== "Zoonotic" ~ "Zoonotic",
+    Zoonotic== "Not_zoonotic" ~ "Not_zoonotic")) 
+```
+
+```{r}
+#exploratory data analysis
+
+
+create_report(DV4)
+
+plot_bar(DV4)
+```
+
+```{r}
+
+
+#make Df suitable for factominer
+
+view(DV4)
+
+
+DVfacto_table1<-DV4[,c(3,6,13:41)]
+DVfacto_table1<-data.frame(lapply(DVfacto_table1,factor))
+
+summary(DVfacto_table1)
+
+#we can make the order related supplemtnary and make pathology active
+res.mcaDV = MCA(DVfacto_table1,  quali.sup=c(1))
+
+plot.MCA(res.mcaDV)
+plot.MCA(res.mcaDV, invisible=c("var","quali.sup"), cex=0.7)
+plot.MCA(res.mcaDV, invisible=c("ind","quali.sup"), cex=0.7)
+plot.MCA(res.mcaDV, invisible=c("ind","quali.sup"), cex=0.7,selectMod="contrib 20")
+plot.MCA(res.mcaDV, invisible=c("ind","quali.sup"), cex=0.7,selectMod="cos2 10")
+plot.MCA(res.mcaDV, invisible=c("ind"))
+plot.MCA(res.mcaDV, invisible=c("ind", "var"))
+
+
+
+plotellipses(res.mcaDV, keepvar = 2)
+plotellipses(res.mcaDV, keepvar = 12:15)
+
+dimdesc(res.mcaDV)
+
+
+fviz_mca_biplot(res.mcaDV, 
+               repel = TRUE, # Avoid text overlapping (slow if many point)
+               ggtheme = theme_minimal())
+
+
+fviz_mca_var(res.mcaDV, choice = "mca.cor", 
+            repel = TRUE, # Avoid text overlapping (slow)
+            ggtheme = theme_minimal())
+
+
+
+fviz_mca_var(res.mcaDV, 
+             repel = TRUE, # Avoid text overlapping (slow)
+             ggtheme = theme_minimal())
+
+
+
+# Color by cos2 values: quality on the factor map
+fviz_mca_var(res.mcaDV, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, # Avoid text overlapping
+             ggtheme = theme_minimal())
+
+
+fviz_mca_var(res.mcaDV, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, # avoid text overlapping (slow)
+             ggtheme = theme_minimal()
+             )
+
+```
+
+
