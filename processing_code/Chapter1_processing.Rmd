@@ -7,6 +7,8 @@ output: html_document
 
 ```{r}
 #load packages
+#library(cluster)
+library(dendextend)
 library(tidyverse)
 library(here)
 library(magrittr)
@@ -253,10 +255,16 @@ initial_join4<-initial_join4[,c(1:5,7,17,19,20,8,18,21,22,6,9:14)]
 ```{r}
 #use distinct to make a dataframe with only one entry for each virus
 
+
+
 Distinct_virusDF<-full_data_filter2%>%distinct(Virus_name_2, .keep_all = T)
 
 
 table(Distinct_virusDF$Order)
+
+#export table of viruses
+DVtab<-Distinct_virusDF[,c(1,3,4,5)]
+write.csv(DVtab, "distinct_virus_tab.csv", row.names = F)
 
 ```
 
@@ -324,17 +332,17 @@ data_wrangle2<-data_wrangle1%>%
   mutate(OA_lymphoid=if_else(grepl("(?i)lymph|(?i)marrow|(?i)tonsil|(?i)spleen|(?i)immun",`Systems/organs affected`),"immune_system","not_immune_system"))%>%
   mutate(OA_gastrointestinal=if_else(grepl("(?i)gasto|GI|(?i)stomach|(?i)intest",`Systems/organs affected`),"gastrointestinal_system","not_gastrointestinal_system"))%>%
     mutate(OA_CNS=if_else(grepl("CNS|(?i)nerv|(?i)neur|(?i)ocular",`Systems/organs affected`),"nervous_system","not_nervous_system"))%>%
-    mutate(OA_pancreas=if_else(grepl("(?i)pancreas",`Systems/organs affected`),"pancreas","not_pancreas"))%>%
+   # mutate(OA_pancreas=if_else(grepl("(?i)pancreas",`Systems/organs affected`),"pancreas","not_pancreas"))%>%
   mutate(OA_renal=if_else(grepl("(?i)kidney",`Systems/organs affected`),"renal_system","not_renal_system"))%>%
     mutate(OA_heart=if_else(grepl("(?i)heart",`Systems/organs affected`),"heart","not_heart"))%>%
   mutate(OA_musculoskeletal=if_else(grepl("(?i)muscle|(?i)musculo",`Systems/organs affected`),"musculoskeletal_system","not_musculoskeletal_system"))%>%
     mutate(OA_endothelium=if_else(grepl("(?i)blood vessel wall|(?i)vascular",`Systems/organs affected`),"endothelium","not_endothelium"))%>%
-    mutate(OA_integument=if_else(grepl("(?i)integument",`Systems/organs affected`),"integument","not_integument"))%>%
+   # mutate(OA_integument=if_else(grepl("(?i)integument",`Systems/organs affected`),"integument","not_integument"))%>%
     mutate(OA_reproductive=if_else(grepl("(?i)placenta|(?i)reproductive|(?i)gonad|(?i)fetus",`Systems/organs affected`),"reproductive_system","not_reproductive_system"))%>%
    # mutate(OA_ocular=if_else(grepl("(?i)ocular",`Systems/organs affected`),"ocular","not_ocular"))%>%
    # mutate(OA_fetus=if_else(grepl("(?i)fetus",`Systems/organs affected`),"fetus","not_fetus"))%>%
   #mutate(OA_bone=if_else(grepl("(?i)bone",`Systems/organs affected`),"bone","not_bone"))%>%
-    mutate(OA_thyroid=if_else(grepl("(?i)thyroid",`Systems/organs affected`),"thyroid","not_thyroid"))%>%
+   # mutate(OA_thyroid=if_else(grepl("(?i)thyroid",`Systems/organs affected`),"thyroid","not_thyroid"))%>%
     mutate(OA_liver=if_else(grepl("(?i)liver",`Systems/organs affected`),"liver","not_liver"))
 ```
 ```{r}
@@ -371,11 +379,43 @@ plot_bar(data_wrangle4)
 
 view(data_wrangle4)
 
-facto_table1<-data_wrangle4[,c(3,14,21:49)]
+facto_table1<-data_wrangle4[,c(3,14,21:46)]
 facto_table1<-data.frame(lapply(facto_table1,factor))
 
 
 summary(facto_table1)
+
+```
+```{r}
+#make some plots
+#zoomtoic
+zoonotic_bar<-ggplot(data_wrangle4, aes(Zoonotic, fill=Zoonotic))+geom_bar()
+zoonotic_bar
+
+ggsave(here::here("results", "zoonotic_bar.png"),plot = zoonotic_bar)
+
+table(data_wrangle4$Cell_Receptor)
+
+
+oa_lymph_chart<-ggplot(data_wrangle4, aes(OA_lymphoid, fill=OA_lymphoid))+geom_bar()+theme_minimal()+theme(legend.position="none",axis.text.x = element_text(angle = 45))
+
+oa_lymph_chart
+
+
+oa_resp_chart<-ggplot(data_wrangle4, aes(OA_respiratory, fill=OA_respiratory))+geom_bar()+theme_minimal()+theme(legend.position="none",axis.text.x = element_text(angle = 45))
+oa_CNS_chart<-ggplot(data_wrangle4, aes(OA_CNS, fill=OA_CNS))+geom_bar()+theme_minimal()+theme(legend.position="none",axis.text.x = element_text(angle = 45))
+oa_GI_chart<-ggplot(data_wrangle4, aes(OA_gastrointestinal, fill=OA_gastrointestinal))+geom_bar()+theme_minimal()+theme(legend.position="none",axis.text.x = element_text(angle = 45))
+
+
+
+library(gridExtra)
+
+organs_BC1<-grid.arrange(oa_resp_chart,  oa_CNS_chart,oa_lymph_chart, oa_GI_chart, nrow=1)
+
+
+ggsave(here::here("results", "organs_BC1.png"),plot = organs_BC1)
+```
+```{r}
 #we can make the order related supplemtnary and make pathology active
 res.mca = MCA(facto_table1,  quali.sup=c(1))
 
@@ -390,11 +430,21 @@ plot.MCA(res.mca, invisible=c("ind", "var"))
 #plot ellipses for zoontoic
 zoonotic_ellipse<-plotellipses(res.mca,keepvar = 2)
 
+
+
 ggsave(here::here("results", "zoonotic_ellipse.png"),plot = zoonotic_ellipse)
 
-fviz_mca_biplot(res.mca, 
+plotellipses(res.mca, keepvar = 12:15)
+
+
+fviz_ellipses(res.mca,c(11,15,26), geom = "point")
+
+MCA_biplot<-fviz_mca_biplot(res.mca, invisible = "quali.sup",
                repel = TRUE, # Avoid text overlapping (slow if many point)
                ggtheme = theme_minimal())
+ggsave(here::here("results", "MCA_biplot.png"),plot = MCA_biplot)
+
+
 
 fviz_mca_var(res.mca, 
              repel = TRUE, # Avoid text overlapping (slow)
@@ -452,10 +502,12 @@ corrplot(var$cos2, is.corr=FALSE)
 fviz_cos2(res.mca, choice = "var", axes = 1:2)
 
 
-# Contributions of rows to dimension 1
-fviz_contrib(res.mca, choice = "var", axes = 1, top = 15)
+# Contributions of rows to dimension 1. The red dashed line on the graph below indicates the expected average value, If the contributions were uniform.
+dim1_contrib<-fviz_contrib(res.mca, choice = "var", axes = 1, top = 15)
+ggsave(here::here("results", "dim1_contrib.png"),plot = dim1_contrib)
 # Contributions of rows to dimension 2
-fviz_contrib(res.mca, choice = "var", axes = 2, top = 15)
+dim2_contrib<-fviz_contrib(res.mca, choice = "var", axes = 2, top = 15)
+ggsave(here::here("results", "dim2_contrib.png"),plot = dim2_contrib)
 ```
 
 ###repeating with distinc t viruses DF
@@ -492,17 +544,17 @@ DV2<-DV1%>%
   mutate(OA_lymphoid=if_else(grepl("(?i)lymph|(?i)marrow|(?i)tonsil|(?i)spleen|(?i)immun",`Systems/organs affected`),"immune_system","not_immune_system"))%>%
   mutate(OA_gastrointestinal=if_else(grepl("(?i)gasto|GI|(?i)stomach|(?i)intest",`Systems/organs affected`),"gastrointestinal_system","not_gastrointestinal_system"))%>%
     mutate(OA_CNS=if_else(grepl("CNS|(?i)nerv|(?i)neur|(?i)ocular",`Systems/organs affected`),"nervous_system","not_nervous_system"))%>%
-    mutate(OA_pancreas=if_else(grepl("(?i)pancreas",`Systems/organs affected`),"pancreas","not_pancreas"))%>%
+ #   mutate(OA_pancreas=if_else(grepl("(?i)pancreas",`Systems/organs affected`),"pancreas","not_pancreas"))%>%
   mutate(OA_renal=if_else(grepl("(?i)kidney",`Systems/organs affected`),"renal_system","not_renal_system"))%>%
     mutate(OA_heart=if_else(grepl("(?i)heart",`Systems/organs affected`),"heart","not_heart"))%>%
   mutate(OA_musculoskeletal=if_else(grepl("(?i)muscle|(?i)musculo",`Systems/organs affected`),"musculoskeletal_system","not_musculoskeletal_system"))%>%
     mutate(OA_endothelium=if_else(grepl("(?i)blood vessel wall|(?i)vascular",`Systems/organs affected`),"endothelium","not_endothelium"))%>%
-    mutate(OA_integument=if_else(grepl("(?i)integument",`Systems/organs affected`),"integument","not_integument"))%>%
+#    mutate(OA_integument=if_else(grepl("(?i)integument",`Systems/organs affected`),"integument","not_integument"))%>%
     mutate(OA_reproductive=if_else(grepl("(?i)placenta|(?i)reproductive|(?i)gonad|(?i)fetus",`Systems/organs affected`),"reproductive_system","not_reproductive_system"))%>%
    # mutate(OA_ocular=if_else(grepl("(?i)ocular",`Systems/organs affected`),"ocular","not_ocular"))%>%
    # mutate(OA_fetus=if_else(grepl("(?i)fetus",`Systems/organs affected`),"fetus","not_fetus"))%>%
   #mutate(OA_bone=if_else(grepl("(?i)bone",`Systems/organs affected`),"bone","not_bone"))%>%
-    mutate(OA_thyroid=if_else(grepl("(?i)thyroid",`Systems/organs affected`),"thyroid","not_thyroid"))%>%
+  #  mutate(OA_thyroid=if_else(grepl("(?i)thyroid",`Systems/organs affected`),"thyroid","not_thyroid"))%>%
     mutate(OA_liver=if_else(grepl("(?i)liver",`Systems/organs affected`),"liver","not_liver"))
 ```
 ```{r}
@@ -522,7 +574,7 @@ DV4<-DV3%>%
   mutate(CR_integrins=if_else(grepl("(?i)integrin",Cell_Receptor),"integrins","not_integrins"))%>%
   mutate(CR_HSPG=if_else(grepl("(?i)HSGP|HSPG|heparan",Cell_Receptor),"HSPG","not_HSPG"))
 
-DV4<-DV4[,c(1:6,9:14,17:45 )]
+DV4<-DV4[,c(1:6,9:14,17:42 )]
 
 #make anthro into zoonotic. can't say if anto/zoo without species for direction
 DV4%<>%
@@ -536,7 +588,7 @@ DV4%<>%
 #exploratory data analysis
 
 
-create_report(DV4)
+create_report(DV4, output_file = "reportDV.html", report_title = "Data Profiling Report DV")
 
 plot_bar(DV4)
 ```
@@ -549,7 +601,7 @@ plot_bar(DV4)
 view(DV4)
 
 
-DVfacto_table1<-DV4[,c(3,6,13:41)]
+DVfacto_table1<-DV4[,c(3,6,13:38)]
 DVfacto_table1<-data.frame(lapply(DVfacto_table1,factor))
 
 summary(DVfacto_table1)
@@ -603,6 +655,134 @@ fviz_mca_var(res.mcaDV, col.var = "contrib",
              ggtheme = theme_minimal()
              )
 
+
+grpDV <- as.factor(DVfacto_table1[, "Zoonotic"])
+zoonotic_ellipse_varDV<-fviz_mca_biplot(res.mcaDV, repel = TRUE, col.var = "#E7B800",
+ habillage = grpDV, addEllipses = TRUE, ellipse.level = 0.95, invisible = "quali.sup")
+
+zoonotic_ellipse_varDV
+
+ggsave(here::here("results", "zoonotic_ellipse_varDV.png"),plot = zoonotic_ellipse_varDV)
+
+#try with OA_CNS
+neuroDV <- as.factor(DVfacto_table1[, "OA_CNS"])
+CNS_ellipse_varDV<-fviz_mca_biplot(res.mcaDV, repel = TRUE, col.var = "#E7B800",
+ habillage = neuroDV, addEllipses = TRUE, ellipse.level = 0.95, invisible = "quali.sup")
+
+CNS_ellipse_varDV
+
+
+MCA_biplotDV<-fviz_mca_biplot(res.mcaDV, invisible = "quali.sup",
+               repel = TRUE, # Avoid text overlapping (slow if many point)
+               ggtheme = theme_minimal())
+ggsave(here::here("results", "MCA_biplotDV.png"),plot = MCA_biplotDV)
+
+
+
+# Contributions of rows to dimension 1. The red dashed line on the graph below indicates the expected average value, If the contributions were uniform.
+dim1_contribDV<-fviz_contrib(res.mca, choice = "var", axes = 1, top = 15)
+ggsave(here::here("results", "dim1_contribDV.png"),plot = dim1_contribDV)
+# Contributions of rows to dimension 2
+dim2_contribDV<-fviz_contrib(res.mca, choice = "var", axes = 2, top = 15)
+ggsave(here::here("results", "dim2_contribDV.png"),plot = dim2_contribDV)
+```
+```{r}
+#make some plots DV
+#zoomtoic
+zoonotic_barDV <-ggplot(DV4, aes(Zoonotic, fill=Zoonotic))+geom_bar()
+zoonotic_barDV
+
+
+table(DV4$Cell_Receptor)
+table(DV4$Spread_Mechanism)
+
+oa_lymph_chartDV<-ggplot(DV4, aes(OA_lymphoid, fill=OA_lymphoid))+geom_bar()+theme_minimal()+theme(legend.position="none",axis.text.x = element_text(angle = 45))
+
+oa_lymph_chartDV
+
+
+oa_resp_chartDV<-ggplot(DV4, aes(OA_respiratory, fill=OA_respiratory))+geom_bar()+theme_minimal()+theme(legend.position="none",axis.text.x = element_text(angle = 45))
+oa_CNS_chartDV<-ggplot(DV4, aes(OA_CNS, fill=OA_CNS))+geom_bar()+theme_minimal()+theme(legend.position="none",axis.text.x = element_text(angle = 45))
+oa_GI_chartDV<-ggplot(DV4, aes(OA_gastrointestinal, fill=OA_gastrointestinal))+geom_bar()+theme_minimal()+theme(legend.position="none",axis.text.x = element_text(angle = 45))
+
+
+
+library(gridExtra)
+
+organs_BC1DV<-grid.arrange(oa_resp_chartDV,  oa_CNS_chartDV,oa_lymph_chartDV, oa_GI_chartDV, nrow=1)
+
+
+ggsave(here::here("results", "organs_BC1DV.png"),plot = organs_BC1DV)
+
 ```
 
 
+
+```{r}
+set.seed(768)
+
+DVclusterDF<-DV4[,c(1,6,13:38)]
+
+DVclus_label <- DVclusterDF$Virus_Name
+DVclusterDF$Virus_Name <- NULL
+str(DVclusterDF)
+
+
+DVclusterDF<-data.frame(lapply(DVclusterDF,factor))
+# DVclus_sc <- as.data.frame(scale(DVclusterDF))
+# summary(DVclus_sc)
+
+gower.dist <- cluster::daisy(DVclusterDF[ ,2:27], metric = c("gower"))
+
+
+hclust_avg <- hclust(gower.dist, method = 'average')
+plot(hclust_avg)
+
+cut_avg <- cutree(hclust_avg, k = 6)
+
+
+avg_dend_obj <- as.dendrogram(hclust_avg)
+avg_col_dend <- color_branches(avg_dend_obj, k = 12) %>%place_labels(DVclus_label)
+
+#virus_dendrogram<-
+  plot(avg_col_dend)
+
+  virus_dendrogram<-ggplot(avg_col_dend)
+  
+# png("DV_dend.png")
+# plot(avg_col_dend)
+# dev.off()
+  
+  
+ggsave(here::here("results", "virus_dendrogram.png"),plot = virus_dendrogram)
+
+
+DV_dendro<-fviz_dend(avg_col_dend, cex = 0.4,horiz = T, k=12, 
+          main= "Virus Pathological Traits Dendrogram", rect = T, k_colors = "Dark2", rect_fill = T, rect_border = "Dark2", lower_rect = -0.125)
+
+DV_dendro
+ggsave(here::here("results", "DV_dendrogram.png"),plot = DV_dendro)
+#plot as phylogram
+library(ape)
+
+plot(as.phylo(avg_col_dend), cex = 0.5)#, #label.offset = 1)
+
+
+# plot(hclust_avg)
+# rect.hclust(hclust_avg , k = 3, border = 2:6)
+# abline(h = 3, col = 'red')
+```
+
+
+```{r}
+#append cluster results back to original table 
+DVcluster_df_cl <- mutate(DVclusterDF, cluster = cut_avg)
+count(DVcluster_df_cl,cluster)
+
+
+table(DVcluster_df_cl$cluster,DVclus_label)
+
+
+
+ggplot(DVcluster_df_cl)+ geom_mosaic( aes(x=product(Zoonotic, cluster), fill=Zoonotic))
+```
